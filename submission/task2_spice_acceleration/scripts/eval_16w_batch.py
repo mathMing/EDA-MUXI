@@ -59,6 +59,13 @@ def auto_detect_paths(args):
     # 3. Output directory
     output_dir = args.output_dir or os.environ.get("OUTPUT_DIR") or os.path.abspath("./batch_16w_out")
     os.makedirs(output_dir, exist_ok=True)
+    for f in os.listdir(output_dir):
+        if f.endswith(".out"):
+            try:
+                os.remove(os.path.join(output_dir, f))
+            except OSError:
+                pass
+
 
     # 4. Ngspice binary
     possible_ngspice = [
