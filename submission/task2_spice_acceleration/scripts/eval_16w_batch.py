@@ -236,6 +236,11 @@ def main():
     print("-" * 80)
     print(f">>> All {len(tasks)} Workers Finished in {total_wall_clock:.2f}s Total Wall-Clock Time! <<<")
 
+    any_failed = any(res['returncode'] != 0 for res in worker_results)
+    if any_failed:
+        print("ERROR: One or more workers failed!")
+        sys.exit(1)
+
     # 检查输出文件数
     generated_outs = [f for f in os.listdir(paths["output_dir"]) if f.endswith(".out")]
     print(f"Generated {len(generated_outs)} / {len(cases)} waveform .out file(s) in {paths['output_dir']}")
@@ -253,8 +258,12 @@ def main():
             print(v_res.stdout)
             if v_res.stderr:
                 print("[Verification Notice]:", v_res.stderr.strip())
+            if v_res.returncode != 0:
+                print("ERROR: Verification failed.")
+                sys.exit(1)
         except Exception as ve:
             print(f"Verification execution error: {ve}")
+            sys.exit(1)
 
 if __name__ == "__main__":
     main()

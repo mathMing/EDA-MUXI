@@ -8,12 +8,29 @@ public:
 
     void reset() {
         start_time_ = std::chrono::high_resolution_clock::now();
+        elapsed_ = 0.0;
+        running_ = true;
+    }
+
+    void start() {
+        start_time_ = std::chrono::high_resolution_clock::now();
+        running_ = true;
+    }
+
+    void stop() {
+        auto end_time = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> duration = end_time - start_time_;
+        elapsed_ = duration.count();
+        running_ = false;
     }
 
     double elapsed_ms() const {
-        auto end_time = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> duration = end_time - start_time_;
-        return duration.count();
+        if (running_) {
+            auto end_time = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> duration = end_time - start_time_;
+            return duration.count();
+        }
+        return elapsed_;
     }
 
     double elapsed_us() const {
@@ -28,6 +45,8 @@ public:
 
 private:
     std::chrono::time_point<std::chrono::high_resolution_clock> start_time_;
+    double elapsed_ = 0.0;
+    bool running_ = true;
 };
 
 #if defined(__CUDACC__) || defined(__MACA__) || defined(__MXMACA__)

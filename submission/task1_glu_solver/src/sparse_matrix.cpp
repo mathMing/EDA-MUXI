@@ -177,22 +177,28 @@ std::vector<real_t> SparseMatrixIO::read_vector(const std::string& filepath) {
     std::string line;
     // Check if it's matrix market format or plain numbers
     std::vector<real_t> vec;
+    bool has_mm_header = false;
     bool in_data = false;
-    index_t expected_size = -1;
-
+    index_t expected_size = 0;
     while (std::getline(file, line)) {
         if (line.empty()) continue;
-        if (line[0] == '%') continue;
+        if (line[0] == '%') {
+            if (line.find("%%MatrixMarket") != std::string::npos && line.find("array") != std::string::npos) {
+                has_mm_header = true;
+            }
+            continue;
+        }
         std::stringstream ss(line);
-        if (!in_data) {
-            // First non-comment line could be size (e.g. "N 1")
+        if (has_mm_header && !in_data) {
+            // MatrixMarket array format: "N 1"
             index_t n = 0, m = 0;
-            if (ss >> n >> m) {
+            if (line.find('.') == std::string::npos && (ss >> n >> m) && (m == 1)) {
                 expected_size = n;
                 vec.reserve(expected_size);
                 in_data = true;
                 continue;
             }
+            in_data = true;
         }
         real_t val;
         while (ss >> val) {
