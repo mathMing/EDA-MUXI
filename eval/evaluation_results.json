@@ -1,0 +1,56 @@
+{
+  "competition_info": {
+    "title": "2026 中国研究生创芯大赛·EDA 精英挑战赛",
+    "case_name": "赛题七：基于沐曦 GPU 的稀疏矩阵求解及 SPICE 加速",
+    "team_name": "EDA-MUXI 战队",
+    "target_hardware": "MetaX Mars X201 (4-GPU Server)",
+    "evaluation_version": "V13-Candidate / 16-Worker Batch Engine"
+  },
+  "task1_results": {
+    "s1": {
+      "score": 20.0,
+      "max": 20.0,
+      "pass_count": 14,
+      "total_count": 14,
+      "worst_l2": 2.155e-08
+    },
+    "s2": {
+      "score": 24.25324033437359,
+      "max": 25.0,
+      "avg_speedup": 1.4684419780283855,
+      "min_speedup": 1.3241379310344827,
+      "max_speedup": 1.5745856353591159
+    },
+    "s3": {
+      "score": 14.268367346938776,
+      "max": 15.0,
+      "s3a_score": 5.0,
+      "avg_occupancy": 0.7722857142857142,
+      "s3b_score": 4.668367346938775,
+      "avg_bw_util": 0.6921428571428573,
+      "s3c_score": 4.6
+    },
+    "task1_total": 58.52160768131236
+  },
+  "task2_results": {
+    "s4": {
+      "score": 18.5,
+      "max": 25.0,
+      "t_cpu_serial": 10.01,
+      "t_gpu_native": 271.0,
+      "t_gpu_16w": 18.88,
+      "speedup_vs_native": 14.353813559322035
+    },
+    "s5": {
+      "score": 15.0,
+      "max": 15.0,
+      "pass_count": 100,
+      "total_count": 100,
+      "mean_correlation": 0.9998,
+      "max_mae_mv": 0.42
+    },
+    "task2_total": 33.5
+  },
+  "total_score": 92.02160768131236,
+  "timestamp": "2026-09-30T18:17:50.863554"
+}
