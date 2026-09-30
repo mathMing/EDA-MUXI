@@ -93,20 +93,23 @@ $$\text{RelErr} = \frac{\|Ax - b\|_2}{\|b\|_2}$$
 2. 官方标准 CPU 生成 golden 时采用批量非交互式命令：`ngspice -b -o file.out input.sp`。在该模式下，NGSPICE 内部的 post-processor 会**自动在给定的 4ns 步长均匀时间网格上进行线性插值**，生成恰好 10,001 个数据点；
 3. 而此前 GPU 交互式 `.control` 脚本通过 `print v(v_out) v(v_inp) > file.out` 转储波形时，默认输出的是内部 Gear/梯形积分器自适应产生的原始时间戳（包含不等距的步长点，下降沿最密处点距变小）。当官方评测脚本将这两种不同时钟对齐方式的向量做点对点对账时，产生了微小的弦切假阳性误差。
 
-#### 2.1.3 创新解决方案：In-Process 原生向量线性化插值
-我们在 NGSPICE 控制流中引入了原生 `linearize` 指令，并设计了动态 Plot 切换机制：
+#### 2.1.3 创新解决方案：In-Process 原生向量线性化插值与内存完全重置
+我们在 NGSPICE 批处理控制流中引入了原生 `linearize` 插值指令，并结合了严格的内存销毁与拓扑隔离机制（`destroy all` / `remcirc`）：
 
 ```spice
 .control
 set noaskquit
 set filetype=ascii
-source /supp/CUSPICE_public/netlist/single/test_005_tran.sp
+source /path/to/test_005_tran.sp
 run
-* 核心关键：将瞬态向量重采样到网表声明的标准均匀步长网格
+* 核心关键 1：将自适应积分步长瞬态向量重采样到网表声明的 4ns 规整网格
 linearize v(v_out) v(v_inp)
-* 切换到由 linearize 创建的规整插值 Plot (tran2)
+* 核心关键 2：切换到由 linearize 创建的规整插值 Plot (tran2)
 setplot tran2
 print v(v_out) v(v_inp) > /workspace/test_005_tran.out
+* 核心关键 3：彻底销毁当前电路变量与拓扑，重置内存并确保后续用例 plot 编号不发生偏移
+destroy all
+remcirc
 quit
 .endc
 ```
