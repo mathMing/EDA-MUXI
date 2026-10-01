@@ -37,7 +37,7 @@
 
 // Precision definition: Default double precision for circuit MNA simulation
 using real_t = double;
-using index_t = int32_t;
+using index_t = int64_t;
 
 // GPU Error Checking Macro
 #if defined(__CUDACC__) || defined(__MACA__) || defined(__MXMACA__)

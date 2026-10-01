@@ -3,10 +3,11 @@
 # 任务一：基于沐曦 GPU / 异构环境的稀疏矩阵求解器 (lu_cmd)
 # ==============================================================================
 
-# 自动自适应编译器: 优先支持 MACA/CUDA 工具链，通用平台回退到 g++
-CXX ?= $(shell which maccc 2>/dev/null || which nvcc 2>/dev/null || which g++ 2>/dev/null || echo g++)
+# 自动自适应编译器探测: 优先支持 MACA/CUDA 工具链，通用平台回退到 g++
+NVCC ?= $(shell which maccc 2>/dev/null || which nvcc 2>/dev/null)
+CXX  ?= $(shell which g++ 2>/dev/null || which clang++ 2>/dev/null || echo g++)
 
-CXXFLAGS = -O3 -std=c++11 -Wall
+CXXFLAGS = -O3 -std=c++11 -Wall -Wextra
 INCLUDES = -I./include
 
 # 适配沐曦 HPCC 软件栈
@@ -14,20 +15,36 @@ ifneq ($(wildcard /opt/hpcc/include),)
     INCLUDES += -I/opt/hpcc/include
 endif
 ifneq ($(wildcard /opt/hpcc/lib64),)
-    LDFLAGS += -L/opt/hpcc/lib64
+    LDFLAGS += -L/opt/hpcc/lib64 -lmaca_runtime -lcuda
 endif
 
-SRCS = src/sparse_matrix.cpp src/lu_cmd.cpp
-OBJS = $(SRCS:.cpp=.o)
+# 源文件与目标对象定义
+CPP_SRCS = src/sparse_matrix.cpp src/lu_cmd.cpp
+CU_SRCS  = src/numeric.cu
+
+CPP_OBJS = $(CPP_SRCS:.cpp=.o)
+CU_OBJS  = $(CU_SRCS:.cu=.o)
+
 TARGET = lu_cmd
 
 all: $(TARGET)
 
-$(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $(OBJS) $(LDFLAGS)
+$(TARGET): $(CPP_OBJS) $(CU_OBJS)
+ifneq ($(NVCC),)
+	$(NVCC) $(CXXFLAGS) $(INCLUDES) -o $@ $(CPP_OBJS) $(CU_OBJS) $(LDFLAGS)
+else
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $(CPP_OBJS) $(CU_OBJS) $(LDFLAGS)
+endif
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+
+%.o: %.cu
+ifneq ($(NVCC),)
+	$(NVCC) -O3 -std=c++11 $(INCLUDES) -c $< -o $@
+else
+	$(CXX) $(CXXFLAGS) -x c++ $(INCLUDES) -c $< -o $@
+endif
 
 clean:
 	rm -f src/*.o $(TARGET)

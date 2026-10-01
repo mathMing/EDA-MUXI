@@ -11,6 +11,7 @@
 #include "sparse_matrix.h"
 #include "error_metrics.h"
 #include "timer.h"
+#include "numeric.h"
 
 // ==============================================================================
 // 稀疏直接 LU 求解器核心引擎 (Sparse Direct LU Solver Engine)
@@ -147,70 +148,22 @@ bool execute_gpu_sparse_lu(const CSRMatrix& A,
                            std::vector<real_t>& x,
                            double& sym_time,
                            double& num_time) {
-    index_t n = A.rows;
-    index_t nnz = A.nnz;
-    (void)nnz;
-
-#if defined(__CUDACC__) || defined(__MACA__) || defined(__MXMACA__)
-    GpuTimer sym_timer, num_timer;
-    
-    real_t *d_val = nullptr, *d_b = nullptr, *d_x = nullptr;
-    index_t *d_row_ptr = nullptr, *d_col_idx = nullptr;
-
-    CHECK_GPU_ERROR(cudaMalloc((void**)&d_val, nnz * sizeof(real_t)));
-    CHECK_GPU_ERROR(cudaMalloc((void**)&d_row_ptr, (n + 1) * sizeof(index_t)));
-    CHECK_GPU_ERROR(cudaMalloc((void**)&d_col_idx, nnz * sizeof(index_t)));
-    CHECK_GPU_ERROR(cudaMalloc((void**)&d_b, n * sizeof(real_t)));
-    CHECK_GPU_ERROR(cudaMalloc((void**)&d_x, n * sizeof(real_t)));
-
-    CHECK_GPU_ERROR(cudaMemcpy(d_val, A.values.data(), nnz * sizeof(real_t), cudaMemcpyHostToDevice));
-    CHECK_GPU_ERROR(cudaMemcpy(d_row_ptr, A.row_ptr.data(), (n + 1) * sizeof(index_t), cudaMemcpyHostToDevice));
-    CHECK_GPU_ERROR(cudaMemcpy(d_col_idx, A.col_idx.data(), nnz * sizeof(index_t), cudaMemcpyHostToDevice));
-    CHECK_GPU_ERROR(cudaMemcpy(d_b, b.data(), n * sizeof(real_t), cudaMemcpyHostToDevice));
-
-    sym_timer.start();
-    cudaDeviceSynchronize();
-    sym_timer.stop();
-    sym_time = sym_timer.elapsed_ms();
-
-    num_timer.start();
-    std::vector<std::vector<std::pair<index_t, real_t>>> L_rows, U_rows;
-    real_t diag_min = 0.0;
-    SparseDirectLUSolver::factorize(A, L_rows, U_rows, diag_min);
-    SparseDirectLUSolver::solve(n, L_rows, U_rows, b, x);
-
-    CHECK_GPU_ERROR(cudaMemcpy(d_x, x.data(), n * sizeof(real_t), cudaMemcpyHostToDevice));
-    CHECK_GPU_ERROR(cudaMemcpy(x.data(), d_x, n * sizeof(real_t), cudaMemcpyDeviceToHost));
-    cudaDeviceSynchronize();
-    num_timer.stop();
-    num_time = num_timer.elapsed_ms();
-
-    cudaFree(d_val);
-    cudaFree(d_row_ptr);
-    cudaFree(d_col_idx);
-    cudaFree(d_b);
-    cudaFree(d_x);
-
-#else
-    Timer sym_timer, num_timer;
-    
-    sym_timer.start();
-    std::vector<index_t> row_counts(n, 0);
-    for (index_t i = 0; i < n; ++i) {
-        row_counts[i] = A.row_ptr[i + 1] - A.row_ptr[i];
+    x.assign(A.rows, 0.0);
+    int status = gpu_numeric_lu_solve(A.rows,
+                                      A.nnz,
+                                      A.row_ptr.data(),
+                                      A.col_idx.data(),
+                                      A.values.data(),
+                                      b.data(),
+                                      x.data(),
+                                      &sym_time,
+                                      &num_time);
+    if (status != 0) {
+        std::vector<std::vector<std::pair<index_t, real_t>>> L_rows, U_rows;
+        real_t diag_min = 0.0;
+        SparseDirectLUSolver::factorize(A, L_rows, U_rows, diag_min);
+        SparseDirectLUSolver::solve(A.rows, L_rows, U_rows, b, x);
     }
-    sym_timer.stop();
-    sym_time = sym_timer.elapsed_ms();
-
-    num_timer.start();
-    std::vector<std::vector<std::pair<index_t, real_t>>> L_rows, U_rows;
-    real_t diag_min = 0.0;
-    SparseDirectLUSolver::factorize(A, L_rows, U_rows, diag_min);
-    SparseDirectLUSolver::solve(n, L_rows, U_rows, b, x);
-    num_timer.stop();
-    num_time = num_timer.elapsed_ms();
-#endif
-
     return true;
 }
 
