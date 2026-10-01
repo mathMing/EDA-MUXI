@@ -158,10 +158,16 @@ def verify_case(golden_path, test_path, tol_l2=1e-2, tol_linf=1e-1):
     t_g, v_g_out, _ = golden
     t_t, v_t_out, _ = test
 
-    # 对齐 V(v_out) (主要波形)
-    t_sel, v_g_aligned = align_signals(t_g, v_g_out, t_t, v_t_out)
-    _, v_t_aligned = align_signals(t_g, v_g_out, t_t, v_t_out)  # 重复调用只为取得 v_t
-    # 避免重复计算: 直接使用上一行结果
+    # 对齐 V(v_out) (主要波形) — 选公共时间区间
+    t_min = t_g[0] if t_g[0] > t_t[0] else t_t[0]
+    t_max = t_g[-1] if t_g[-1] < t_t[-1] else t_t[-1]
+    tol = 1e-9
+    t_sel = [t for t in t_g if (t >= t_min - tol) and (t <= t_max + tol)]
+    if len(t_sel) < 2:
+        return False, "alignment_failed", None, None
+
+    # 在选中的 t_sel 网格上, 同时插值 golden 和 test
+    v_g_aligned = interp_linear(t_g, v_g_out, t_sel)
     v_t_aligned = interp_linear(t_t, v_t_out, t_sel)
 
     l2_err, linf_err = compute_metrics(v_g_aligned, v_t_aligned)
