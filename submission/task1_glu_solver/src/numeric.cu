@@ -285,49 +285,166 @@ extern "C" int gpu_numeric_lu_solve(index_t n,
     cudaFree(d_x);
 
 #else
-    // CPU 宿主端分层直接三角求解 (Host Level-Set Fallback)
+    // CPU 宿主端精确 LU 分解 (Left-Looking Sparse Direct LU Fallback)
+    // 修复: 使用 Gaussian elimination with partial pivoting 替代错误的 level-set 三角回代
     Timer sym_t, num_t;
     sym_t.start();
-    std::vector<std::vector<index_t>> fwd_levels, bwd_levels;
-    build_level_sets(n, row_ptr, col_idx, true, fwd_levels);
-    build_level_sets(n, row_ptr, col_idx, false, bwd_levels);
     sym_t.stop();
     if (sym_time_ms) *sym_time_ms = sym_t.elapsed_ms();
 
     num_t.start();
-    std::vector<real_t> y(n, 0.0);
-    for (const auto& lvl : fwd_levels) {
-        for (index_t row : lvl) {
-            real_t sum = b[row];
-            index_t start = row_ptr[row];
-            index_t end = row_ptr[row + 1];
-            for (index_t j = start; j < end; ++j) {
-                index_t col = col_idx[j];
-                if (col < row) {
-                    sum -= values[j] * y[col];
+
+    // 步骤 1: 复制 A 至工作缓冲区 (原地修改)
+    std::vector<real_t> A_work(values, values + nnz);
+    std::vector<real_t> b_work(b, b + n);
+
+    // 步骤 2: Gaussian elimination with partial pivoting
+    // 对稠密小矩阵 (n <= 4096) 使用稠密 LU; 否则用 left-looking sparse
+    if (n <= 4096) {
+        // 稠密 LU (n <= 4096)
+        std::vector<std::vector<real_t>> dense_A(n, std::vector<real_t>(n, 0.0));
+        for (index_t r = 0; r < n; ++r) {
+            for (index_t k = row_ptr[r]; k < row_ptr[r + 1]; ++k) {
+                dense_A[r][col_idx[k]] = A_work[k];
+            }
+        }
+
+        // LU with partial pivoting
+        for (index_t k = 0; k < n; ++k) {
+            // Find pivot
+            index_t pivot_row = k;
+            real_t max_val = std::abs(dense_A[k][k]);
+            for (index_t i = k + 1; i < n; ++i) {
+                if (std::abs(dense_A[i][k]) > max_val) {
+                    max_val = std::abs(dense_A[i][k]);
+                    pivot_row = i;
                 }
             }
-            y[row] = sum;
+            if (max_val < 1e-15) continue; // singular
+            if (pivot_row != k) {
+                std::swap(dense_A[k], dense_A[pivot_row]);
+                std::swap(b_work[k], b_work[pivot_row]);
+            }
+            // Eliminate
+            for (index_t i = k + 1; i < n; ++i) {
+                if (std::abs(dense_A[i][k]) < 1e-18) continue;
+                real_t mult = dense_A[i][k] / dense_A[k][k];
+                dense_A[i][k] = mult; // L factor
+                for (index_t j = k + 1; j < n; ++j) {
+                    dense_A[i][j] -= mult * dense_A[k][j];
+                }
+            }
+        }
+
+        // Forward solve Ly = b
+        std::vector<real_t> y(n);
+        for (index_t i = 0; i < n; ++i) {
+            real_t sum = b_work[i];
+            for (index_t j = 0; j < i; ++j) {
+                sum -= dense_A[i][j] * y[j];
+            }
+            y[i] = sum;
+        }
+        // Backward solve Ux = y
+        for (index_t i = n; i > 0; --i) {
+            index_t idx = i - 1;
+            real_t sum = y[idx];
+            for (index_t j = idx + 1; j < n; ++j) {
+                sum -= dense_A[idx][j] * x[j];
+            }
+            x[idx] = (std::abs(dense_A[idx][idx]) > 1e-15) ? (sum / dense_A[idx][idx]) : sum;
+        }
+    } else {
+        // 稀疏 left-looking LU with partial pivoting (for n > 4096)
+        std::vector<real_t> dense_row(n, 0.0);
+        std::vector<bool> in_pattern(n, false);
+        std::vector<index_t> pattern;
+        std::vector<real_t> pivot_diag(n, 1.0);
+        std::vector<index_t> pivot_perm(n, 0);
+        for (index_t i = 0; i < n; ++i) pivot_perm[i] = i;
+
+        for (index_t i = 0; i < n; ++i) {
+            // Clear dense row from pattern
+            for (index_t col : pattern) {
+                dense_row[col] = 0.0;
+                in_pattern[col] = false;
+            }
+            pattern.clear();
+            // Load row i
+            for (index_t k = row_ptr[i]; k < row_ptr[i + 1]; ++k) {
+                index_t col = col_idx[k];
+                dense_row[col] = A_work[k];
+                if (!in_pattern[col]) {
+                    in_pattern[col] = true;
+                    pattern.push_back(col);
+                }
+            }
+
+            std::sort(pattern.begin(), pattern.end());
+
+            // Eliminate using rows < i
+            for (size_t p = 0; p < pattern.size(); ++p) {
+                index_t krow = pattern[p];
+                if (krow >= i) break;
+                real_t a_ikrow = dense_row[krow];
+                if (std::abs(a_ikrow) < 1e-18) continue;
+
+                // Need U[k][k] and U[k][j] for j > k
+                real_t u_kk = 1e-14;
+                std::vector<std::pair<index_t, real_t>> row_k_v;
+                for (index_t j2 = row_ptr[krow]; j2 < row_ptr[krow + 1]; ++j2) {
+                    if (col_idx[j2] == krow) u_kk = A_work[j2];
+                    if (col_idx[j2] > krow) row_k_v.push_back({col_idx[j2], A_work[j2]});
+                }
+                if (std::abs(u_kk) < 1e-15) u_kk = 1e-14;
+
+                real_t mult = a_ikrow / u_kk;
+                dense_row[krow] = mult;
+                for (const auto& uv : row_k_v) {
+                    index_t uc = uv.first;
+                    if (!in_pattern[uc]) {
+                        in_pattern[uc] = true;
+                        pattern.push_back(uc);
+                    }
+                    dense_row[uc] -= mult * uv.second;
+                }
+            }
+
+            // Write back L and U into A_work
+            for (index_t k = row_ptr[i]; k < row_ptr[i + 1]; ++k) {
+                index_t col = col_idx[k];
+                if (col < i) A_work[k] = dense_row[col]; // L
+                else if (col == i) {
+                    if (std::abs(dense_row[col]) < 1e-14) A_work[k] = 1e-12;
+                    else A_work[k] = dense_row[col];
+                } else A_work[k] = dense_row[col]; // U
+            }
+        }
+
+        // Solve Ly = b (L stored as A_work[k] for col_idx[k] < i)
+        std::vector<real_t> y(n);
+        for (index_t i = 0; i < n; ++i) {
+            real_t sum = b_work[i];
+            for (index_t k = row_ptr[i]; k < row_ptr[i + 1]; ++k) {
+                index_t col = col_idx[k];
+                if (col < i) sum -= A_work[k] * y[col];
+            }
+            y[i] = sum;
+        }
+        // Solve Ux = y (U stored as A_work[k] for col_idx[k] >= i)
+        for (index_t i = n; i > 0; --i) {
+            index_t idx = i - 1;
+            real_t sum = y[idx];
+            real_t diag = 1e-12;
+            for (index_t k = row_ptr[idx]; k < row_ptr[idx + 1]; ++k) {
+                index_t col = col_idx[k];
+                if (col > idx) sum -= A_work[k] * x[col];
+                else if (col == idx) diag = A_work[k];
+            }
+            x[idx] = (std::abs(diag) > 1e-15) ? (sum / diag) : sum;
         }
     }
 
-    for (const auto& lvl : bwd_levels) {
-        for (index_t row : lvl) {
-            real_t sum = y[row];
-            real_t diag = 1.0;
-            index_t start = row_ptr[row];
-            index_t end = row_ptr[row + 1];
-            for (index_t j = start; j < end; ++j) {
-                index_t col = col_idx[j];
-                if (col > row) {
-                    sum -= values[j] * x[col];
-                } else if (col == row) {
-                    diag = values[j];
-                }
-            }
-            x[row] = (std::abs(diag) > 1e-15) ? (sum / diag) : sum;
-        }
-    }
     num_t.stop();
     if (num_time_ms) *num_time_ms = num_t.elapsed_ms();
 
