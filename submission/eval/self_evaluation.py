@@ -85,10 +85,11 @@ def run_task2_real(task2_script, netlist_dir, golden_dir):
     try:
         res = subprocess.run(cmd, capture_output=True, text=True)
         
-        # Dynamic parsing of verified pass count from verification logs
+        t_match = re.search(r"in ([\d\.]+)s Total Wall-Clock Time", res.stdout)
+        total_time = float(t_match.group(1)) if t_match else 0.0
         pass_count = 0
         total_cases = 0
-        
+
         p_match = re.search(r"(?:PASS(?:ED)?|通过)[\s:]*(\d+)\s*/\s*(\d+)", res.stdout, re.IGNORECASE)
         if p_match:
             pass_count = int(p_match.group(1))
