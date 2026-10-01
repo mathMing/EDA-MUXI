@@ -81,9 +81,12 @@ def auto_detect_paths(args):
     possible_verify = [
         args.verify_script,
         os.environ.get("VERIFY_SCRIPT"),
+        # V11: Also check the local scripts dir of task2
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "verify_waveform.py"),
         "/home/eda260713/spice-lu-gpu/organizer_supp/spice-golden/scripts/verify_waveform.py",
         "/supp/spice-golden/scripts/verify_waveform.py",
-        os.path.abspath("./scripts/verify_waveform.py")
+        os.path.abspath("./scripts/verify_waveform.py"),
+        os.path.abspath("./verify_waveform.py"),
     ]
     verify_script = next((v for v in possible_verify if v and os.path.exists(v)), None)
 
@@ -241,11 +244,27 @@ def main():
         print("ERROR: One or more workers failed!")
         sys.exit(1)
 
-    # 检查输出文件数
+    # Check output file count
     generated_outs = [f for f in os.listdir(paths["output_dir"]) if f.endswith(".out")]
     print(f"Generated {len(generated_outs)} / {len(cases)} waveform .out file(s) in {paths['output_dir']}")
 
-    # 自动调用波形验证
+    # V11: Sanity check — ensure worker scripts written
+    if not os.path.isdir(work_dir):
+        print(f"ERROR: Worker script directory missing: {work_dir}")
+        sys.exit(1)
+    written_scripts = [f for f in os.listdir(work_dir) if f.endswith('.sp')]
+    print(f"Generated {len(written_scripts)} worker .sp control script(s) in {work_dir}")
+
+    # V11: Aggregate error summary for failed workers (before verification)
+    failed_workers = [r for r in worker_results if r['returncode'] != 0]
+    if failed_workers:
+        print(f"\n=== {len(failed_workers)} worker(s) reported non-zero exit; sample stderr ===")
+        for fw in failed_workers[:3]:
+            err = fw.get('stderr', '')[:500]
+            if err:
+                print(f"  [Worker {fw['worker_id']:02d}] stderr: {err}")
+
+    # Auto-call waveform verification
     if paths["golden_dir"] and paths["verify_script"]:
         print("\n=== Running Waveform Consistency Verification against Golden ===")
         if paths["verify_script"].endswith(".sh"):
