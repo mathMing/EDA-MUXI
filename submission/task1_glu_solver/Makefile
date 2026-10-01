@@ -14,8 +14,13 @@ INCLUDES = -I./include
 ifneq ($(wildcard /opt/hpcc/include),)
     INCLUDES += -I/opt/hpcc/include
 endif
-ifneq ($(wildcard /opt/hpcc/lib64),)
-    LDFLAGS += -L/opt/hpcc/lib64 -lmaca_runtime -lcuda
+# 沐曦 C500 通过 cu-bridge 提供 CUDA 兼容运行时
+ifneq ($(wildcard /home/eda260713/cu-bridge/CUDA_DIR/lib64/libcuda.so),)
+    LDFLAGS += -L/home/eda260713/cu-bridge/CUDA_DIR/lib64 -lcuda
+endif
+# 仅在运行时库实际存在时链接 maca (避免服务器无 GPU 库时链接失败)
+ifneq ($(wildcard /opt/hpcc/lib64/libmaca_runtime.so),)
+    LDFLAGS += -L/opt/hpcc/lib64 -lmaca_runtime
 endif
 
 # 源文件与目标对象定义
