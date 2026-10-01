@@ -36,6 +36,10 @@ public:
         diag_min = 1e30;
 
         for (index_t i = 0; i < n; ++i) {
+            for (index_t col : pattern) {
+                dense_row[col] = 0.0;
+                in_pattern[col] = false;
+            }
             pattern.clear();
             for (index_t k = A.row_ptr[i]; k < A.row_ptr[i + 1]; ++k) {
                 index_t col = A.col_idx[k];
@@ -158,13 +162,7 @@ bool execute_gpu_sparse_lu(const CSRMatrix& A,
                                       x.data(),
                                       &sym_time,
                                       &num_time);
-    if (status != 0) {
-        std::vector<std::vector<std::pair<index_t, real_t>>> L_rows, U_rows;
-        real_t diag_min = 0.0;
-        SparseDirectLUSolver::factorize(A, L_rows, U_rows, diag_min);
-        SparseDirectLUSolver::solve(A.rows, L_rows, U_rows, b, x);
-    }
-    return true;
+    return (status == 0);
 }
 
 void print_usage(const char* prog) {
