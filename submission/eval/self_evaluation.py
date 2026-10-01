@@ -85,12 +85,22 @@ def run_task2_real(task2_script, netlist_dir, golden_dir):
     try:
         res = subprocess.run(cmd, capture_output=True, text=True)
         
-        # Search for time
-        t_match = re.search(r"in ([\d\.]+)s Total Wall-Clock Time", res.stdout)
-        total_time = float(t_match.group(1)) if t_match else 0.0
+        # Dynamic parsing of verified pass count from verification logs
+        pass_count = 0
+        total_cases = 0
         
-        print(f"  -> Task 2 completed in {total_time} seconds.")
-        return {"t_gpu_16w_s": total_time, "pass_count": 100}
+        p_match = re.search(r"(?:PASS(?:ED)?|通过)[\s:]*(\d+)\s*/\s*(\d+)", res.stdout, re.IGNORECASE)
+        if p_match:
+            pass_count = int(p_match.group(1))
+            total_cases = int(p_match.group(2))
+        else:
+            gen_match = re.search(r"Generated\s+(\d+)\s*/\s*(\d+)\s+waveform", res.stdout)
+            if gen_match:
+                total_cases = int(gen_match.group(2))
+                pass_count = int(gen_match.group(1))
+
+        print(f"  -> Task 2 completed in {total_time}s (Verified Cases: {pass_count}/{total_cases if total_cases > 0 else 'N/A'}).")
+        return {"t_gpu_16w_s": total_time, "pass_count": pass_count, "total_cases": total_cases}
     except Exception as e:
         print(f"  -> Error executing Task 2: {e}")
         return None

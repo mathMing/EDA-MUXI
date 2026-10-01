@@ -12,6 +12,6 @@ echo "==========================================================================
 echo "  [Task 2] Launching 4-GPU 16-Worker Datasweep Parallel Simulation Engine"
 echo "================================================================================"
 
-python3 scripts/eval_16w_batch.py
+python3 scripts/eval_16w_batch.py "$@"
 
 echo "=== Task 2 Execution and Verification Finished Successfully ==="

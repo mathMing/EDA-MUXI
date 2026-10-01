@@ -1,0 +1,57 @@
+diff -urN cuspice-original/src/maths/ni/niiter.c cuspice-modified/src/maths/ni/niiter.c
+--- cuspice-original/src/maths/ni/niiter.c	2026-09-01 00:00:00.000000000 +0800
++++ cuspice-modified/src/maths/ni/niiter.c	2026-10-01 16:00:00.000000000 +0800
+@@ -102,6 +102,11 @@
+ #include "ngspice/ngspice.h"
+ #include "ngspice/smpdefs.h"
+ 
++#ifdef USE_CUSPICE
++/* Declare external GPU solver interface provided by Task 1 libglu.so */
++void gpu_sparse_lu_solve(const double* values, const int* col_ptr, const int* row_idx, double* rhs, double* sol, int n, int nnz);
++#endif
++
+ int
+ NIiter(CKTcircuit *ckt, int maxIter)
+ {
+@@ -254,7 +259,25 @@
+         }
+ 
+         /* Solve the linear system */
++#ifdef USE_CUSPICE
++        if (ckt->CKTmatrix->is_sparse && ckt->CKTmatrix->n >= 1000) { /* Accelerate only large matrices */
++            double* rhs = ckt->CKTrhs;
++            double* sol = ckt->CKTrhs; /* In-place solve */
++            int n = ckt->CKTmatrix->n;
++            int nnz = ckt->CKTmatrix->nnz;
++            
++            /* Delegate to MetaX GPU Sparse LU Solver */
++            gpu_sparse_lu_solve(
++                ckt->CKTmatrix->values, 
++                ckt->CKTmatrix->col_ptr, 
++                ckt->CKTmatrix->row_idx, 
++                rhs, sol, n, nnz
++            );
++        } else {
++            error = SMPsolve(ckt->CKTmatrix, ckt->CKTrhs, ckt->CKTrhsOld);
++        }
++#else
+         error = SMPsolve(ckt->CKTmatrix, ckt->CKTrhs, ckt->CKTrhsOld);
++#endif
++
+         if (error != OK) {
+             return (error);
+         }
+diff -urN cuspice-original/configure.ac cuspice-modified/configure.ac
+--- cuspice-original/configure.ac	2026-09-01 00:00:00.000000000 +0800
++++ cuspice-modified/configure.ac	2026-10-01 16:00:00.000000000 +0800
+@@ -142,6 +142,13 @@
+     [AC_MSG_ERROR([CUDA not found. Required for --enable-cuspice])]
+   )
+ ])
++
++AC_ARG_ENABLE(metax-glu,
++  AS_HELP_STRING([--enable-metax-glu], [Enable MetaX GPU Sparse LU solver for Task 2 acceleration]),
++  [AC_DEFINE(USE_CUSPICE, 1, [Use MetaX GPU LU solver])]
++  [LIBS="$LIBS -lglu -L../task1_glu_solver/build"]
++)
++

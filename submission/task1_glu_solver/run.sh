@@ -17,7 +17,7 @@ make clean && make -j4
 # 2. 若传入矩阵参数，则直接执行测试
 if [ -n "$1" ]; then
     echo "=== Running Solver on Matrix: $1 ==="
-    ./lu_cmd -i "$1"
+    ./lu_cmd -i "$1" "${@:2}"
 else
-    echo "=== Build Complete! Usage: ./lu_cmd -i <matrix_csr.mtx> ==="
+    echo "=== Build Complete! Usage: ./lu_cmd -i <matrix_csr.mtx> [-b <rhs.mtx>] [-r <ref.mtx>] ==="
 fi

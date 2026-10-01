@@ -190,15 +190,18 @@ std::vector<real_t> SparseMatrixIO::read_vector(const std::string& filepath) {
         }
         std::stringstream ss(line);
         if (has_mm_header && !in_data) {
-            // MatrixMarket array format: "N 1"
+            // MatrixMarket array format: "N M" (typically "N 1")
             index_t n = 0, m = 0;
-            if (line.find('.') == std::string::npos && (ss >> n >> m) && (m == 1)) {
-                expected_size = n;
+            std::string extra;
+            if ((ss >> n >> m) && !(ss >> extra) && n > 0 && m > 0) {
+                expected_size = n * m;
                 vec.reserve(expected_size);
                 in_data = true;
                 continue;
             }
             in_data = true;
+            ss.clear();
+            ss.str(line);
         }
         real_t val;
         while (ss >> val) {
