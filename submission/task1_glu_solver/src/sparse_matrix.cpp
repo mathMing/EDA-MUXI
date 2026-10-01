@@ -88,7 +88,8 @@ CSRMatrix SparseMatrixIO::read_matrix_market(const std::string& filepath) {
         throw std::runtime_error("Invalid Matrix Market header in: " + filepath);
     }
 
-    bool is_symmetric = (line.find("symmetric") != std::string::npos);
+    bool is_skew_symmetric = (line.find("skew-symmetric") != std::string::npos);
+    bool is_symmetric = (!is_skew_symmetric && line.find("symmetric") != std::string::npos);
 
     // Skip comment lines
     while (std::getline(file, line)) {
@@ -118,6 +119,8 @@ CSRMatrix SparseMatrixIO::read_matrix_market(const std::string& filepath) {
             row_entries[r][c] += val;
             if (is_symmetric && r != c) {
                 row_entries[c][r] += val;
+            } else if (is_skew_symmetric && r != c) {
+                row_entries[c][r] -= val;
             }
         }
     }

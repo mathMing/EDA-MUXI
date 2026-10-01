@@ -58,6 +58,7 @@ public:
     }
 
     ~GpuTimer() {
+        cudaEventSynchronize(stop_);
         cudaEventDestroy(start_);
         cudaEventDestroy(stop_);
     }
