@@ -109,12 +109,20 @@ def generate_worker_script(worker_id, worker_cases, netlist_dir, output_dir, wor
     1. 在每个用例仿真后执行 'destroy all' 与 'remcirc'，彻底避免内存泄漏与节点污染；
     2. 由于每次执行均从净态启动，'tran' 恒生成 tran1，'linearize' 恒生成 tran2，规避 plot 索引漂移。
     """
+    # Step 2.2: 可选的 solver method 注入, 默认保留 CUSPICE+KLU 组合
+    # 环境变量 SPICE_METHOD 可选: gear, trapezoidal, spice2, spice3, Euler
+    #   - gear / trapezoidal: 启用 ngspice 自带的积分方法, CUSPICE GPU 仍跑
+    #   - spice2/spice3/Euler: 被 ngspice ci_curOpt 拒绝, 会 fatal
+    # 不设置 SPICE_METHOD 时不写 set method=, 与 9/28 旧行为一致
+    spice_method = os.environ.get("SPICE_METHOD", "").strip()
     sp_lines = [
         f"* Worker {worker_id} Robust In-Process Batch Runner",
         ".control",
         "set noaskquit",
         "set filetype=ascii"
     ]
+    if spice_method:
+        sp_lines.append(f"set method={spice_method}")
     for k, case in enumerate(worker_cases):
         base = os.path.splitext(case)[0]
         case_path = os.path.join(netlist_dir, case).replace("\\", "/")
@@ -127,7 +135,8 @@ def generate_worker_script(worker_id, worker_cases, netlist_dir, output_dir, wor
         sp_lines.append('linearize v(v_out) v(v_inp)')
         # 切换到由 linearize 创建的标准插值 plot (在 reset 后恒为 tran2)
         sp_lines.append('setplot tran2')
-        sp_lines.append(f'print v(v_out) v(v_inp) > {out_path}')
+        # 关键: print 必须包含 time 列, 否则后续波形对齐丢失时间轴
+        sp_lines.append(f'print time v(v_out) v(v_inp) > {out_path}')
         # 核心内存清理: 销毁所有 plot 与电路拓扑，释放显存与内存
         sp_lines.append('destroy all')
         sp_lines.append('remcirc')
