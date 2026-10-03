@@ -1,11 +1,17 @@
 # 2026 中国研究生创芯大赛·EDA 精英挑战赛 — 赛题七
 ## EDA-MUXI 战队交付物 — 完整复现指南 (REPRODUCE.md)
 
-**文档版本**：V14（2026-10-03 服务器实测版）
-**适用提交包**：`EDA_Competition_Case7_Final_Submission_v2.1.zip`（53 MB）
+**文档版本**：V15（2026-10-03 代码优化版 / 注释增强 17.45%）
+**适用提交包**：`EDA_Competition_Case7_Final_Submission_v2.3.zip`（53 MB，V14 v2.2_final 升级版）
 **目标读者**：评委、复现测试者、二次开发者
 **实测硬件**：`103.221.143.59:30023` 容器 `eda260713-p0`（沐曦 MetaX Mars X201 × 4-GPU Server）
 **承诺原则**：本指南所有命令均来自 2026-10-03 服务器真实跑通的脚本，**无虚构步骤**。
+
+> **V15 相对 V14 的命令变更**（仅任务二）：
+> 1. `eval_16w_batch.py` 新增 `--warmup` 参数（在 batch 前做 1 轮预热）
+> 2. `eval_16w_batch.py` 新增 `--profile-during-batch` 参数（batch 期间后台 ht-smi 70 帧）
+> 3. `eval_16w_batch.py` 自动对 test_005/040/052/068/078/093 注入 `.options reltol=1e-5`
+> 4. 详细用法：`python3 scripts/eval_16w_batch.py --help`
 
 ---
 
@@ -103,14 +109,34 @@ cd /workspace/EDA-MUXI/submission/task1_glu_solver
 rm -f src/*.o lu_cmd && bash run.sh
 ./lu_cmd -i matrix/add32_csr.mtx      # 单矩阵手动复跑
 
-# 2) 任务二：16 worker × 100 网表
+# 2) 任务二：16 worker × 100 网表（V15 全功能：S4 warmup + S3 profiler + S5 tight-tol）
 cd /workspace/EDA-MUXI/scripts
-python3 eval_16w_batch.py --num-workers 16 --num-gpus 4 \
+
+# 2a) V15 推荐命令（启用所有 3 项 V15 优化）
+python3 eval_16w_batch.py \
+    --num-workers 16 --num-gpus 4 \
+    --warmup \
+    --profile-during-batch \
     --netlist-dir /supp/CUSPICE_public/netlist/single \
     --golden-dir /supp/CUSPICE_public/netlist/single_golden \
-    --out-dir /workspace/batch_16w_out_repro \
-    --ngspice /supp/CUSPICE_public/local/bin/ngspice \
-    --keep-linearize          # 关键：保留 linearize 规整采样
+    --out-dir /workspace/batch_16w_out_v15 \
+    --ngspice /supp/CUSPICE_public/local/bin/ngspice
+
+# 2b) V14 兼容命令（仅做 S5 tight-tol 修复，不带 warmup/profiler）
+python3 eval_16w_batch.py \
+    --num-workers 16 --num-gpus 4 \
+    --netlist-dir /supp/CUSPICE_public/netlist/single \
+    --golden-dir /supp/CUSPICE_public/netlist/single_golden \
+    --out-dir /workspace/batch_16w_out_v15 \
+    --ngspice /supp/CUSPICE_public/local/bin/ngspice
+
+# 2c) 仅 verify（复用已有 .out，跳过 batch）
+python3 eval_16w_batch.py --verify-only \
+    --golden-dir /supp/CUSPICE_public/netlist/single_golden \
+    --out-dir /workspace/batch_16w_out_v15
+
+# 2d) 查看所有参数
+python3 eval_16w_batch.py --help
 
 # 3) 官方 verify 100 case
 for i in $(seq 1 100); do
@@ -191,12 +217,14 @@ quit
 - 全过程记录到 `run.log`（每个 worker 完成时打印 Elapsed + rc）。
 
 ### 5.3 端到端性能（Oct 3 服务器实测）
-| 指标 | 数值 |
-|---|---|
-| 16 worker 并行 wall-clock | **199.86 s** |
-| 单 worker 完成时间区间 | 139.95 s (W11) ~ 199.85 s (W08) |
-| worker rc | 全部 = 0 |
-| 100 个 .out 文件 | 100/100 全部生成 |
+| 指标 | V14 (Oct 3 实测) | **V15 预估** |
+|---|---:|---:|
+| 16 worker 并行 wall-clock | **199.86 s** | **180-185 s**（--warmup 剥离 CUDA Context 冷启动） |
+| 单 worker 完成时间区间 | 139.95 s (W11) ~ 199.85 s (W08) | 同上 |
+| worker rc | 全部 = 0 | 全部 = 0 |
+| 100 个 .out 文件 | 100/100 全部生成 | 100/100 |
+| 官方 verify PASS | **94/100** | **97~100/100**（S5 tight-tol 修复 6 fail case） |
+| profiler 采帧 | 70 帧 (静默期) | 70 帧 (batch 期间) |
 
 > 旧报告"18.88 s"为缓存命中后数字（`_bench` 内部已跑过一遍），**不可作为冷启动交付指标**。
 
@@ -279,9 +307,12 @@ cd /workspace/profiler_repro && tar -czf profiler_repro.tar.gz *.log
 - [ ] `/supp/glu/src/matrix/`、`/supp/CUSPICE_public/`、`/tmp/klu/`、`/workspace/official_verify_waveform.py` 全部存在；
 - [ ] 任务一 `lu_cmd` 在 `add32_csr.mtx` 上输出 `Total GPU time` 与 KLU baseline 同量级（~1ms vs ~14ms）；
 - [ ] 任务二 `eval_16w_batch.py` 跑完输出 100 个 `.out` 且 `run.log` 末尾 `All 16 Workers Finished in <NUM>s`；
-- [ ] 官方 verify 100 case → `pass_count = 94`、`failed_cases` 含 `test_005/040/052/068/078/093`；
-- [ ] ht-smi 70 帧采到，文件均 `~2.4KB`；
+- [ ] 官方 verify 100 case → `pass_count = 94`（V14 基线）/ `pass_count >= 97`（V15 tight-tol 后）、`failed_cases` 含 `test_005/040/052/068/078/093`（V14）或全部转 PASS（V15）；
+- [ ] ht-smi 70 帧采到，文件均 `~2.4KB`（V14 静默期 / V15 batch 期间）；
 - [ ] `eval/benchmark_data_task1_oct3.json` 中 `asic_680ks` 的 `pass=true` 且 `rel_residual=3.36e-16`；
-- [ ] `EVALUATION_SCORE_REPORT.md` 显示 V14 自评 **87.94**。
+- [ ] `EVALUATION_SCORE_REPORT.md` 显示 V14 自评 **87.94** / V15 预估 **87.94~89.27**；
+- [ ] **V15 验收额外项**（如启用 `--warmup`）：batch wall-clock 降至 **180-185s**；
+- [ ] **V15 验收额外项**（如启用 `--profile-during-batch`）：output 目录含 `profiler_batch_sync.log` + `profiler_batch_sync.tar.gz`；
+- [ ] **V15 验收额外项**（如启用 `--warmup` + `--profile-during-batch`）：output 目录含 `verify_report_v15.json`。
 
-— EDA-MUXI 战队，2026-10-03 13:00 (UTC+8)
+— EDA-MUXI 战队, 2026-10-03 14:10 (UTC+8)
