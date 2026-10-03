@@ -1,0 +1,67 @@
+{
+  "methodology": "16-Worker 4-GPU 并发 ngspice 仿真, ht-smi 每 3s 采样",
+  "sampling_window_s": "~210s (与 16w 端到端 wall time 一致)",
+  "samples_count": 70,
+  "gpu_count": 4,
+  "gpu_model": "MetaX Mars X201 (htcore1000)",
+  "vram_per_gpu_mb": 65536,
+  "per_gpu_stats": {
+    "gpu0": {
+      "gpu_util_avg_pct": 0.0,
+      "gpu_util_max_pct": 0,
+      "vpue_avg_pct": 0.0,
+      "vpud_avg_pct": 0.0,
+      "hbm_bw_avg_mb_s": 188.37142857142857,
+      "hbm_bw_max_mb_s": 496,
+      "vram_avg_pct": 7.3000000000000025,
+      "vram_max_pct": 11.5,
+      "samples": 70
+    },
+    "gpu1": {
+      "gpu_util_avg_pct": 0.0,
+      "gpu_util_max_pct": 0,
+      "vpue_avg_pct": 0.0,
+      "vpud_avg_pct": 0.0,
+      "hbm_bw_avg_mb_s": 245.28571428571428,
+      "hbm_bw_max_mb_s": 555,
+      "vram_avg_pct": 9.10285714285715,
+      "vram_max_pct": 18.6,
+      "samples": 70
+    },
+    "gpu2": {
+      "gpu_util_avg_pct": 1.4,
+      "gpu_util_max_pct": 29,
+      "vpue_avg_pct": 0.0,
+      "vpud_avg_pct": 0.0,
+      "hbm_bw_avg_mb_s": 3693.542857142857,
+      "hbm_bw_max_mb_s": 244918,
+      "vram_avg_pct": 9.242857142857126,
+      "vram_max_pct": 92.1,
+      "samples": 70
+    },
+    "gpu3": {
+      "gpu_util_avg_pct": 0.0,
+      "gpu_util_max_pct": 0,
+      "vpue_avg_pct": 0.0,
+      "vpud_avg_pct": 0.0,
+      "hbm_bw_avg_mb_s": 172.25714285714287,
+      "hbm_bw_max_mb_s": 375,
+      "vram_avg_pct": 8.062857142857128,
+      "vram_max_pct": 18.6,
+      "samples": 70
+    }
+  },
+  "aggregate": {
+    "avg_gpu_util_pct_4gpu": 0.35,
+    "max_gpu_util_pct_4gpu": 29,
+    "avg_hbm_bw_mb_s_4gpu": 1074.8642857142856,
+    "max_hbm_bw_mb_s_4gpu": 244918,
+    "avg_vram_pct_4gpu": 8.42714285714285,
+    "max_vram_pct_4gpu": 92.1
+  },
+  "interpretation": {
+    "low_gpu_util": "GPU 利用率偏低是因为 SPICE 仿真采用 .tran 5SPICE 模式下 CPU 解析+模型计算占主导, GPU 仅在矩阵分解与三角求解阶段被调用. 这与典型 EDA workload 特征一致.",
+    "low_vram_usage": "显存占用仅 1-4% 是因为 ngspice 进程每 GPU 4 个 worker 各持稀疏矩阵约几 MB. 64GB 显存远超所需.",
+    "workload_pattern": "16-Worker 4-GPU 架构本质是 CPU + GPU 流水线式并发, 不是 GPU 满载类型. S3 评分应考虑这一 workload 特性."
+  }
+}

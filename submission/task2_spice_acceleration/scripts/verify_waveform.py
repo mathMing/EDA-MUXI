@@ -39,13 +39,9 @@ def parse_ngspice_out(filepath):
     # 策略: 解析 header 行, 找到 'time' 列的索引
     col_offset = 1  # 默认假设有时间列, parts[0] 是时间 (可能带 Index 时为 2)
     with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-        first_lines = []
-        for _ in range(20):
-            line = f.readline()
-            if not line:
-                break
-            first_lines.append(line)
-        text_head = ''.join(first_lines)
+        # 服务器端 golden 文件 ngspice stdout 头部可能>20行, 需扩大扫描
+        # (Circuit:/Doing analysis/Using KLU/gmin stepping 等约 90 行)
+        text_head = f.read(50000)
         # 找包含 'Index' 且包含 'time' 的 header
         m = re.search(r'(?:^|\n)Index[\s\t]+time[\s\t]+(v\([^)]+\)\s*)+', text_head, re.MULTILINE)
         if m:
@@ -57,7 +53,6 @@ def parse_ngspice_out(filepath):
                 col_offset = 1  # 只有 time, parts[0]=time, parts[1]=v_out, parts[2]=v_inp
 
     with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-        prev_index = -1
         for line in f:
             s = line.strip()
             # 跳过空行、表头、index 行
@@ -183,7 +178,7 @@ def verify_case(golden_path, test_path, tol_l2=1e-2, tol_linf=1e-1):
     t_g, v_g_out, _ = golden
     t_t, v_t_out, _ = test
 
-    # Detect grid types for adaptive tolerance (debug-evidenced)
+    # Detect grid types for adaptive tolerance:
     # bench typically uses uniform 1ns grid (step ~ 1e-9), golden uses adaptive
     n_g = len(t_g)
     n_t = len(t_t)
@@ -213,8 +208,6 @@ def verify_case(golden_path, test_path, tol_l2=1e-2, tol_linf=1e-1):
     # When bench uses uniform 1ns grid but golden uses adaptive grid,
     # we expect ~1-3% L2 error from missing peak interpolation.
     # Relax to L2<5% to allow grid-induced sampling error.
-    # NOTE: This was confirmed by debug logs showing bench step=1e-9 vs
-    # golden step_g_min=4e-11/step_g_max=2.5e-6 (adaptive).
     adaptive_tol_l2 = tol_l2
     adaptive_tol_linf = tol_linf
     if step_t_avg is not None and 5e-10 < step_t_avg < 5e-9:

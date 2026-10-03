@@ -22,6 +22,13 @@ endif
 ifneq ($(wildcard /opt/hpcc/lib64/libmaca_runtime.so),)
     LDFLAGS += -L/opt/hpcc/lib64 -lmaca_runtime
 endif
+# KLU sparse direct solver (SuiteSparse) - fallback for high-accuracy sparse LU
+# Server: /tmp/work/SuiteSparse/  contains libklu.so + headers
+ifneq ($(wildcard /tmp/work/SuiteSparse/include/klu.h),)
+    INCLUDES += -I/tmp/work/SuiteSparse/include
+    LDFLAGS += -L/tmp/work/SuiteSparse/lib -lklu -lamd -lcolamd -lbtf -lsuitesparseconfig
+    KLU_RPATH = -Wl,-rpath,/tmp/work/SuiteSparse/lib:/opt/hpcc/lib64
+endif
 
 # 源文件与目标对象定义
 CPP_SRCS = src/sparse_matrix.cpp src/lu_cmd.cpp
@@ -36,9 +43,9 @@ all: $(TARGET)
 
 $(TARGET): $(CPP_OBJS) $(CU_OBJS)
 ifneq ($(NVCC),)
-	$(NVCC) $(CXXFLAGS) $(INCLUDES) -o $@ $(CPP_OBJS) $(CU_OBJS) $(LDFLAGS)
+	$(NVCC) $(CXXFLAGS) $(INCLUDES) -o $@ $(CPP_OBJS) $(CU_OBJS) $(LDFLAGS) $(KLU_RPATH)
 else
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $(CPP_OBJS) $(CU_OBJS) $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $(CPP_OBJS) $(CU_OBJS) $(LDFLAGS) $(KLU_RPATH)
 endif
 
 %.o: %.cpp

@@ -1,0 +1,118 @@
+{
+  "matrices": [
+    {
+      "name": "add32",
+      "t_gpu_ms": 1.253457,
+      "t_klu_ms": 14.0,
+      "speedup": 11.169,
+      "rel_residual": 0.117639,
+      "pass": false
+    },
+    {
+      "name": "ASIC_100k",
+      "t_gpu_ms": 91667.78,
+      "t_klu_ms": 1505.0,
+      "speedup": 0.016,
+      "rel_residual": 0.002681271,
+      "pass": false
+    },
+    {
+      "name": "ASIC_100ks",
+      "t_gpu_ms": 27.91217,
+      "t_klu_ms": 1503.0,
+      "speedup": 53.847,
+      "rel_residual": 2.792372e-05,
+      "pass": false
+    },
+    {
+      "name": "ASIC_680ks",
+      "t_gpu_ms": 57.4535,
+      "t_klu_ms": 1969.0,
+      "speedup": 34.271,
+      "rel_residual": 3.359782e-16,
+      "pass": true
+    },
+    {
+      "name": "bcircuit",
+      "t_gpu_ms": 19.66083,
+      "t_klu_ms": 244.0,
+      "speedup": 12.41,
+      "rel_residual": 1.87412e-05,
+      "pass": false
+    },
+    {
+      "name": "dianwangmatrix1",
+      "t_gpu_ms": 3.525196,
+      "t_klu_ms": 50.0,
+      "speedup": 14.184,
+      "rel_residual": 0.408091,
+      "pass": false
+    },
+    {
+      "name": "dianwangmatrix2",
+      "t_gpu_ms": 33.17165,
+      "t_klu_ms": 1383.0,
+      "speedup": 41.692,
+      "rel_residual": 0.5966362,
+      "pass": false
+    },
+    {
+      "name": "G2_circuit",
+      "t_gpu_ms": 21.02013,
+      "t_klu_ms": 201.0,
+      "speedup": 9.562,
+      "rel_residual": 0.0001871374,
+      "pass": false
+    },
+    {
+      "name": "rajat13",
+      "t_gpu_ms": 360.6452,
+      "t_klu_ms": 20.0,
+      "speedup": 0.055,
+      "rel_residual": 603413.7,
+      "pass": false
+    },
+    {
+      "name": "rajat25",
+      "t_gpu_ms": 8375.073,
+      "t_klu_ms": 1973.0,
+      "speedup": 0.236,
+      "rel_residual": 7.852557e+31,
+      "pass": false
+    },
+    {
+      "name": "rajat26",
+      "t_gpu_ms": 281.6289,
+      "t_klu_ms": 159.0,
+      "speedup": 0.565,
+      "rel_residual": 6.983335e+31,
+      "pass": false
+    },
+    {
+      "name": "rajat27",
+      "t_gpu_ms": 60.97584,
+      "t_klu_ms": 64.0,
+      "speedup": 1.05,
+      "rel_residual": 1.910909e+42,
+      "pass": false
+    },
+    {
+      "name": "twotone",
+      "t_gpu_ms": 139.9526,
+      "t_klu_ms": 27333.0,
+      "speedup": 195.302,
+      "rel_residual": null,
+      "pass": false
+    }
+  ],
+  "summary": {
+    "total_matrices": 13,
+    "pass_count": 1,
+    "avg_speedup": 28.796846153846158,
+    "gpu_faster_count": 9,
+    "cpu_faster_count": 4
+  },
+  "note": "Re-run 2026-10-03: /tmp/EDA-MUXI/submission/task1_glu_solver/lu_cmd (GLU) vs /tmp/klu/klu_demo (KLU baseline). Pass = rel_residual < 1e-6.",
+  "gpu_model": "MetaX Mars X201 (4x GPU)",
+  "error_threshold": 1e-06
+}

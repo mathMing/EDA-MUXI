@@ -1,0 +1,61 @@
+================================================================================
+  4-GPU 16-Worker SPICE Batch Simulation & Waveform Verification Engine
+================================================================================
+Netlist Directory : /tmp/spice_fixed
+Golden Directory  : /home/eda260713/spice-lu-gpu/organizer_supp/spice-golden
+Output Directory  : /tmp/task2_out
+Ngspice Binary    : /home/eda260713/spice-lu-gpu/CUSPICE_public/local/bin/ngspice
+Execution Mode    : Native Host
+Workers / GPUs    : 16 Workers / 4 GPUs
+--------------------------------------------------------------------------------
+Discovered 100 circuit netlist(s) to simulate.
+  Worker 00 -> GPU 0 | Assigned 7 netlists -> worker_0.sp
+  Worker 01 -> GPU 1 | Assigned 7 netlists -> worker_1.sp
+  Worker 02 -> GPU 2 | Assigned 7 netlists -> worker_2.sp
+  Worker 03 -> GPU 3 | Assigned 7 netlists -> worker_3.sp
+  Worker 04 -> GPU 0 | Assigned 6 netlists -> worker_4.sp
+  Worker 05 -> GPU 1 | Assigned 6 netlists -> worker_5.sp
+  Worker 06 -> GPU 2 | Assigned 6 netlists -> worker_6.sp
+  Worker 07 -> GPU 3 | Assigned 6 netlists -> worker_7.sp
+  Worker 08 -> GPU 0 | Assigned 6 netlists -> worker_8.sp
+  Worker 09 -> GPU 1 | Assigned 6 netlists -> worker_9.sp
+  Worker 10 -> GPU 2 | Assigned 6 netlists -> worker_10.sp
+  Worker 11 -> GPU 3 | Assigned 6 netlists -> worker_11.sp
+  Worker 12 -> GPU 0 | Assigned 6 netlists -> worker_12.sp
+  Worker 13 -> GPU 1 | Assigned 6 netlists -> worker_13.sp
+  Worker 14 -> GPU 2 | Assigned 6 netlists -> worker_14.sp
+  Worker 15 -> GPU 3 | Assigned 6 netlists -> worker_15.sp
+
+=== Launching Concurrent Worker Processes ===
+  [Worker 11 Completed] GPU 3 | Elapsed: 125.07s | rc=0
+  [Worker 15 Completed] GPU 3 | Elapsed: 129.65s | rc=0
+  [Worker 08 Completed] GPU 0 | Elapsed: 130.38s | rc=0
+  [Worker 14 Completed] GPU 2 | Elapsed: 131.69s | rc=0
+  [Worker 10 Completed] GPU 2 | Elapsed: 133.25s | rc=0
+  [Worker 05 Completed] GPU 1 | Elapsed: 136.19s | rc=0
+  [Worker 06 Completed] GPU 2 | Elapsed: 138.09s | rc=0
+  [Worker 13 Completed] GPU 1 | Elapsed: 148.18s | rc=0
+  [Worker 07 Completed] GPU 3 | Elapsed: 150.24s | rc=0
+  [Worker 03 Completed] GPU 3 | Elapsed: 150.97s | rc=0
+  [Worker 02 Completed] GPU 2 | Elapsed: 156.54s | rc=0
+  [Worker 09 Completed] GPU 1 | Elapsed: 159.45s | rc=0
+  [Worker 00 Completed] GPU 0 | Elapsed: 161.17s | rc=0
+  [Worker 01 Completed] GPU 1 | Elapsed: 161.66s | rc=0
+  [Worker 12 Completed] GPU 0 | Elapsed: 200.12s | rc=0
+  [Worker 04 Completed] GPU 0 | Elapsed: 201.11s | rc=0
+--------------------------------------------------------------------------------
+>>> All 16 Workers Finished in 201.12s Total Wall-Clock Time! <<<
+Generated 100 / 100 waveform .out file(s) in /tmp/task2_out
+Generated 16 worker .sp control script(s) in /tmp/task2_out/_scripts
+
+=== Running Waveform Consistency Verification against Golden ===
+================================================================================
+  Waveform Verification: 0 Golden Cases
+  Golden: /home/eda260713/spice-lu-gpu/organizer_supp/spice-golden
+  Test:   /tmp/task2_out
+  Tolerance: L2 < 1.00e-02, L_inf < 1.00e-01
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+  pass=0 fail=0 missing=0
+================================================================================
+

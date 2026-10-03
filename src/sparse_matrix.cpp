@@ -78,17 +78,78 @@ CSRMatrix SparseMatrixIO::read_matrix_market(const std::string& filepath) {
     }
 
     std::string line;
-    // Read header line
-    if (!std::getline(file, line)) {
-        throw std::runtime_error("Empty Matrix Market file: " + filepath);
+    // Read first non-empty line
+    std::string first_data_line;
+    while (std::getline(file, first_data_line)) {
+        if (!first_data_line.empty() && first_data_line[0] != '%') break;
+    }
+    if (first_data_line.empty()) {
+        throw std::runtime_error("Empty file: " + filepath);
     }
 
-    // Check header
-    if (line.find("%%MatrixMarket") == std::string::npos) {
-        throw std::runtime_error("Invalid Matrix Market header in: " + filepath);
+    // Format detection:
+    //  - If line contains "%%MatrixMarket", parse as MatrixMarket format
+    //  - Else, treat as CSR triplet: "nrows ncols nnz" then row col val triples
+    bool is_csr_triplet = (first_data_line.find("%%MatrixMarket") == std::string::npos);
+
+    if (is_csr_triplet) {
+        // === CSR triplet format (official competition matrices, e.g. add32_csr.mtx) ===
+        std::stringstream hdr(first_data_line);
+        index_t num_rows = 0, num_cols = 0, num_entries = 0;
+        if (!(hdr >> num_rows >> num_cols >> num_entries)) {
+            throw std::runtime_error("Failed to parse CSR triplet header: " + first_data_line);
+        }
+
+        // Read entries into map (sort + sum duplicates; handle symmetric if needed)
+        std::vector<std::map<index_t, real_t>> row_entries(num_rows);
+
+        for (index_t k = 0; k < num_entries; ++k) {
+            index_t r = 0, c = 0;
+            real_t val = 0.0;
+            if (!(file >> r >> c >> val)) {
+                break;
+            }
+            // 1-based to 0-based
+            r -= 1;
+            c -= 1;
+            if (r >= 0 && r < num_rows && c >= 0 && c < num_cols) {
+                // skip explicit zero entries to keep nnz accurate
+                if (val != 0.0) {
+                    row_entries[r][c] += val;
+                }
+            }
+        }
+
+        // Assemble CSR
+        CSRMatrix csr;
+        csr.rows = num_rows;
+        csr.cols = num_cols;
+        csr.row_ptr.assign(num_rows + 1, 0);
+
+        index_t total_nnz = 0;
+        for (index_t r = 0; r < num_rows; ++r) {
+            total_nnz += static_cast<index_t>(row_entries[r].size());
+            csr.row_ptr[r + 1] = total_nnz;
+        }
+
+        csr.nnz = total_nnz;
+        csr.col_idx.resize(total_nnz);
+        csr.values.resize(total_nnz);
+
+        index_t idx = 0;
+        for (index_t r = 0; r < num_rows; ++r) {
+            for (const auto& kv : row_entries[r]) {
+                csr.col_idx[idx] = kv.first;
+                csr.values[idx] = kv.second;
+                idx++;
+            }
+        }
+        return csr;
     }
 
-    bool is_symmetric = (line.find("symmetric") != std::string::npos);
+    // === Original MatrixMarket format ===
+    std::stringstream ss(first_data_line);
+    bool is_symmetric = (first_data_line.find("symmetric") != std::string::npos);
 
     // Skip comment lines
     while (std::getline(file, line)) {
@@ -96,7 +157,6 @@ CSRMatrix SparseMatrixIO::read_matrix_market(const std::string& filepath) {
         break;
     }
 
-    std::stringstream ss(line);
     index_t num_rows = 0, num_cols = 0, num_entries = 0;
     if (!(ss >> num_rows >> num_cols >> num_entries)) {
         throw std::runtime_error("Failed to parse matrix dimensions: " + line);
@@ -178,6 +238,8 @@ std::vector<real_t> SparseMatrixIO::read_vector(const std::string& filepath) {
     // Check if it's matrix market format or plain numbers
     std::vector<real_t> vec;
     bool has_mm_header = false;
+    bool in_data = false;        // PATCH: declared before use
+    index_t expected_size = 0;   // PATCH: declared before use
     while (std::getline(file, line)) {
         if (line.empty()) continue;
         if (line[0] == '%') {

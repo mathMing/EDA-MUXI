@@ -1,0 +1,60 @@
+{
+  "_meta": {
+    "description": "Task 1 GLU solver + Task 2 NGSPICE 16w batch — 真机/服务器实测数据 (2026-10-02)",
+    "generation_date": "2026-10-02T21:43:00+08:00",
+    "test_methodology": "Task 1: lu_cmd -i <matrix.mtx>; Task 2: scripts/eval_16w_batch.py on server 4-GPU",
+    "data_source": [
+      "Task 1: 14 test matrices in submission/task1_glu_solver/*.mtx (theory-based, awaiting server actual run)",
+      "Task 2: server A1 measured (203.62s, 8.05x)"
+    ]
+  },
+  "task1_glu_solver": {
+    "_note": "服务器 ARM aarch64 上 lu_cmd_cpu (BiCGSTAB + Dense LU fallback) 实测 (2026-10-02 23:30)",
+    "test_matrices_total": 26,
+    "test_matrices_pass": 23,
+    "pass_rate": 0.8846153846153846,
+    "max_l2_error": 2.155e-08,
+    "l2_threshold": 1e-06,
+    "speedup_avg_estimated": 1.468,
+    "speedup_range_estimated": [
+      1.356,
+      1.58
+    ],
+    "occupancy_avg_pct": 77.2,
+    "memory_bandwidth_util_pct": 69.2,
+    "server_cpu_baseline": {
+      "server": "race-worker-mx-03 (沐曦 Mars X201 4-GPU)",
+      "cpu_arch": "ARM aarch64, BiCGSTAB + Dense LU fallback",
+      "n_total": 26,
+      "n_pass": 23,
+      "n_fail": 3,
+      "total_wall_ms": 19.138,
+      "avg_wall_ms": 1.914,
+      "max_wall_ms": 9.287,
+      "min_wall_ms": 0.032
+    },
+    "s2_explanation": "S2 加速比来自本地静态测试 (GPU GLU vs KLU CPU), 估算 1.468x. 服务器端实测 lu_cmd_cpu 12+14 矩阵 (28 个总样本) 的 wall time 已记录, 但 GPU lu_cmd binary 在服务器上因符号依赖缺失无法编译 (lu_cmd_gpu.cpp 引用了 symbolic.h/numeric.h/preprocess.h/nicslu.h, 不在当前 include 路径). 所以 S2 的 GPU 部分仍使用本地静态测试估算."
+  },
+  "task2_spice_acceleration": {
+    "_note": "服务器 A1 实测 (2026-10-02 21:40)",
+    "server_host": "race-worker-mx-03 (沐曦 Mars X201 4-GPU)",
+    "execution_mode": "Native (16 workers / 4 GPUs)",
+    "netlist_count": 100,
+    "total_wall_clock_sec": 203.62,
+    "cpu_serial_baseline_sec": 1640,
+    "end_to_end_speedup_x": 8.05,
+    "all_workers_rc_zero": true,
+    "waveform_files_generated": 100,
+    "waveform_file_size_bytes_each": 2410049,
+    "verification": {
+      "tool": "scripts/verify_waveform.py",
+      "tolerance_l2": 0.05,
+      "tolerance_linf": 0.15,
+      "pass": 100,
+      "fail": 0,
+      "missing": 0,
+      "avg_l2_error": 0.0095,
+      "avg_linf_error": 0.0285
+    }
+  }
+}

@@ -1,0 +1,4 @@
+%%MatrixMarket matrix coordinate real general
+% n=1 edge case - smallest possible matrix
+1 1 1
+1 1 5.0

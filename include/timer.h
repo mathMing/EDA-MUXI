@@ -8,16 +8,28 @@ public:
 
     void reset() {
         start_time_ = std::chrono::high_resolution_clock::now();
+        stopped_ = false;
+    }
+
+    // PATCH debug-mode H1: Timer 缺 start()/stop() 接口，与 GpuTimer 对称
+    // start() = reset 时间戳并清除 stopped 标志
+    // stop() 仅记录结束时刻，elapsed_ms 仍基于 start_time 计算
+    void start() { reset(); }
+    void stop() {
+        stop_time_ = std::chrono::high_resolution_clock::now();
+        stopped_ = true;
     }
 
     double elapsed_ms() const {
-        auto end_time = std::chrono::high_resolution_clock::now();
+        auto end_time = stopped_ ? stop_time_
+                                : std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> duration = end_time - start_time_;
         return duration.count();
     }
 
     double elapsed_us() const {
-        auto end_time = std::chrono::high_resolution_clock::now();
+        auto end_time = stopped_ ? stop_time_
+                                : std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::micro> duration = end_time - start_time_;
         return duration.count();
     }
@@ -28,6 +40,8 @@ public:
 
 private:
     std::chrono::time_point<std::chrono::high_resolution_clock> start_time_;
+    std::chrono::time_point<std::chrono::high_resolution_clock> stop_time_;
+    bool stopped_ = false;
 };
 
 #if defined(__CUDACC__) || defined(__MACA__) || defined(__MXMACA__)

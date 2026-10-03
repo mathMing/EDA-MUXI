@@ -1,0 +1,7 @@
+%%MatrixMarket matrix array real general
+% RHS b = ones(4)
+4 1
+1.0
+1.0
+1.0
+1.0
