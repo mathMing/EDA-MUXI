@@ -31,14 +31,17 @@
     "s2": {
       "score": 23.0,
       "max": 25.0,
-      "avg_speedup_arithmetic": 28.80,
-      "avg_speedup_geometric": 4.7,
+      "avg_speedup_arithmetic": 28.8,
+      "avg_speedup_geometric": 3.8,
       "gpu_faster_count": 9,
       "cpu_faster_count": 4,
-      "speedup_range": [0.016, 195.30],
+      "speedup_range": [
+        0.016,
+        195.3
+      ],
       "speedup_median": 14.18,
-      "note": "13 矩阵 vs KLU 2.3.6 端到端. rajat 系列 4 个大矩阵被 KLU 反超, twotone 195.30x 拉高均值. V15 不含此子项优化 (V13 冻结).",
-      "v15_note": "V15 不解冻 V13 源码，S2 维持 V14 数字。"
+      "note": "13 矩阵 vs KLU 2.3.6 端到端. 算术平均 28.80× (twotone 195.30× 拉高均值); 几何平均 3.80× (含 ASIC_100k 0.016× 等 4 个反超 case). rajat 系列 4 个大矩阵被 KLU 反超. V15 不含此子项优化 (V13 冻结).",
+      "v15_note": "V15 不解冻 V13 源码，S2 维持 V14 数字。几何均值 3.80× 由 step15_fix_geo_speedup.py 在 2026-10-03 实测复核（原报告 4.7 偏高，已更正为 3.80）。"
     },
     "s3_task1_design": {
       "s3a_score_task1": 5.0,
@@ -53,7 +56,7 @@
   "task2_results": {
     "s3c_code_quality_v15_enhancement": {
       "score_before": 0.47,
-      "score_after": 0.80,
+      "score_after": 0.8,
       "comment_coverage_before_pct": 7.1,
       "comment_coverage_after_pct": 12.3,
       "files_enhanced": [
@@ -111,14 +114,21 @@
       "note": "V14 冷启动 wall-clock 199.86s 作为诚实交付指标. V15 warmup 预计降至 180-185s，待服务器实测。"
     },
     "s5": {
-      "score_honest_base": 14.10,
+      "score_honest_base": 14.1,
       "max": 15.0,
       "v15_tight_tolerance_fix": {
         "status": "PENDING_SERVER_RETEST",
         "new_feature": "对 test_005/040/052/068/078/093 注入 .options reltol=1e-5 abstol=1e-12 vntol=1e-5",
         "current_pass_count": 94,
         "current_fail_count": 6,
-        "failed_cases": ["test_005_tran.out", "test_040_tran.out", "test_052_tran.out", "test_068_tran.out", "test_078_tran.out", "test_093_tran.out"],
+        "failed_cases": [
+          "test_005_tran.out",
+          "test_040_tran.out",
+          "test_052_tran.out",
+          "test_068_tran.out",
+          "test_078_tran.out",
+          "test_093_tran.out"
+        ],
         "expected_fail_to_pass_conversion": "3 ~ 6",
         "expected_score_delta": "+0 ~ +0.9",
         "v15_score_range": "14.10 ~ 15.00"
@@ -126,25 +136,70 @@
       "verify_tool": "/workspace/official_verify_waveform.py",
       "tol_plateau_rel": 0.02,
       "tol_plateau_abs_v": 0.027,
-      "tol_edge_rel": 0.10,
+      "tol_edge_rel": 0.1,
       "tol_edge_abs_v": 0.18,
       "failure_pattern": "全部为 plateau 检查, 在 t ≈ 3.25e-5 s 附近 v_out 与 golden 偏差 ~0.4V",
-      "root_cause": "CUSPICE 与官方 golden 仿真器在 VCD 输入边沿附近的局部截断误差差异, 被官方 strict 容差捕获。linearize 已重采样到 golden 网格，不是对齐问题。"
+      "root_cause": "CUSPICE 与官方 golden 仿真器在 VCD 输入边沿附近的局部截断误差差异, 被官方 strict 容差捕获。linearize 已重采样到 golden 网格，不是对齐问题。",
+      "failed_cases": [
+        "test_005_tran.out",
+        "test_040_tran.out",
+        "test_052_tran.out",
+        "test_068_tran.out",
+        "test_078_tran.out",
+        "test_093_tran.out"
+      ],
+      "pass_count": 94
     },
-    "task2_total_honest_base": 31.10,
-    "task2_total_v15_upper_estimate": 32.70
+    "task2_total_honest_base": 31.1,
+    "task2_total_v15_upper_estimate": 32.7
   },
   "v13_to_v14_diffs": {
-    "S1": {"v13": 20.00, "v14": 20.00, "diff": 0.0},
-    "S2": {"v13": 24.25, "v14": 23.00, "diff": -1.25, "reason": "切到官方数据集, 4 个 rajat 大矩阵被 KLU 反超"},
-    "S3": {"v13": 13.84, "v14": 13.84, "diff": 0.0},
-    "S4": {"v13": 18.94, "v14": 17.00, "diff": -1.94, "reason": "冷启动 199.86s 替代缓存命中 18.88s"},
-    "S5": {"v13": 15.00, "v14": 14.10, "diff": -0.90, "reason": "官方严格容差 94/100 替代宽松 100/100"},
-    "total": {"v13": 92.03, "v14": 87.94, "diff": -4.09}
+    "S1": {
+      "v13": 20.0,
+      "v14": 20.0,
+      "diff": 0.0
+    },
+    "S2": {
+      "v13": 24.25,
+      "v14": 23.0,
+      "diff": -1.25,
+      "reason": "切到官方数据集, 4 个 rajat 大矩阵被 KLU 反超"
+    },
+    "S3": {
+      "v13": 13.84,
+      "v14": 13.84,
+      "diff": 0.0
+    },
+    "S4": {
+      "v13": 18.94,
+      "v14": 17.0,
+      "diff": -1.94,
+      "reason": "冷启动 199.86s 替代缓存命中 18.88s"
+    },
+    "S5": {
+      "v13": 15.0,
+      "v14": 14.1,
+      "diff": -0.9,
+      "reason": "官方严格容差 94/100 替代宽松 100/100"
+    },
+    "total": {
+      "v13": 92.03,
+      "v14": 87.94,
+      "diff": -4.09
+    }
   },
   "v14_to_v15_diffs": {
-    "S1": {"v14": 20.00, "v15": 20.00, "diff": 0.0},
-    "S2": {"v14": 23.00, "v15": 23.00, "diff": 0.0, "reason": "V13 冻结，S2 不变"},
+    "S1": {
+      "v14": 20.0,
+      "v15": 20.0,
+      "diff": 0.0
+    },
+    "S2": {
+      "v14": 23.0,
+      "v15": 23.0,
+      "diff": 0.0,
+      "reason": "V13 冻结，S2 不变"
+    },
     "S3": {
       "v14": 13.84,
       "v15_honest_base": 13.84,
@@ -153,15 +208,15 @@
       "reason": "本地注释增强: lu_cmd.cpp +150 / error_metrics.h +40 / eval_16w_batch.py +330 (Doxygen)"
     },
     "S4": {
-      "v14": 17.00,
-      "v15_honest_base": 17.00,
+      "v14": 17.0,
+      "v15_honest_base": 17.0,
       "v15_estimated": "17.00 ~ 17.50",
       "diff_estimated": "+0 ~ +0.5",
       "reason": "--warmup 参数待服务器实测 (预计 199.86s -> 180-185s)"
     },
     "S5": {
-      "v14": 14.10,
-      "v15_honest_base": 14.10,
+      "v14": 14.1,
+      "v15_honest_base": 14.1,
       "v15_estimated": "14.10 ~ 15.00",
       "diff_estimated": "+0 ~ +0.9",
       "reason": "tight-tol 注入 (reltol=1e-5) 待服务器实测 6 fail case"
@@ -177,22 +232,38 @@
   "multi_scenario": {
     "optimistic": {
       "description": "SR_best=2x S2, SR_best=8x S4, 仅任务一 S3",
-      "S1": 20.0, "S2": 25.0, "S3": 14.94, "S4": 25.0, "S5": 15.0,
+      "S1": 20.0,
+      "S2": 25.0,
+      "S3": 14.94,
+      "S4": 25.0,
+      "S5": 15.0,
       "total": 99.94
     },
     "standard": {
       "description": "V14 Oct 3 服务器实测 87.94",
-      "S1": 20.0, "S2": 23.00, "S3": 13.84, "S4": 17.00, "S5": 14.10,
+      "S1": 20.0,
+      "S2": 23.0,
+      "S3": 13.84,
+      "S4": 17.0,
+      "S5": 14.1,
       "total": 87.94
     },
     "v15_estimated": {
       "description": "V15 本地优化（诚实口径上限，需服务器实测确认）",
-      "S1": 20.0, "S2": 23.00, "S3": 14.17, "S4": "17.00~17.50", "S5": "14.10~15.00",
+      "S1": 20.0,
+      "S2": 23.0,
+      "S3": 14.17,
+      "S4": "17.00~17.50",
+      "S5": "14.10~15.00",
       "total": "87.94~89.27"
     },
     "pessimistic": {
       "description": "SR_best=3x S2, SR_best=14x S4, 仅任务二 S3",
-      "S1": 20.0, "S2": 12.23, "S3": 8.58, "S4": 14.38, "S5": 14.10,
+      "S1": 20.0,
+      "S2": 12.23,
+      "S3": 8.58,
+      "S4": 14.38,
+      "S5": 14.1,
       "total": 68.29
     }
   },

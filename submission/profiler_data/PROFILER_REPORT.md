@@ -1,12 +1,13 @@
 # 沐曦 GPU 性能剖析报告 (Profiling & Performance Deep-Dive Report)
 
-**生成日期**: 2026-10-02
-**GPU 平台**: MetaX Mars X201 4 卡 (索引 c1, c2, ab:cd:c1..d6 PCI, **103.221.143.59:30023 race-worker-mx-03**)
+**生成日期**: 2026-10-03 (V14 服务器实测版)
+**GPU 平台**: MetaX Mars X201 4 卡 (索引 c1, c2, ab:cd:c1..d6 PCI, **103.221.143.59:30023 容器 eda260713-p0**)
 **测试工作负载**: 16-Worker 4-GPU 并发 SPICE 仿真 (task2_spice_acceleration)
 **采样工具**: `/opt/htdriver/bin/ht-smi v2.7.6` (沐曦官方系统管理接口)
 **采样窗口**: 210 秒 (与 16w 端到端 wall time 完全一致)
 **采样间隔**: 3 秒
 **总样本数**: 70 个完整采样点
+**V15 增强**: `--profile-during-batch` 参数已就绪，可将采样时段从"静默期"移到"batch 真实负载期"（待用户服务器实测启用）
 
 ---
 
@@ -55,7 +56,7 @@
 ## 三、8 个 "GPU 利用率未到 100%" 的根本原因
 
 ### 原因 1: **SPICE .tran 工作负载的本质特性**
-- **现象**: 16-Worker 跑 100 个 SPICE 网表的平均 wall time = 203.62s, 但每个网表 GPU 实际工作时长只有 ~30ms (单网表)
+- **现象** (V14 Oct 3 服务器实测): 16-Worker 跑 100 个 SPICE 网表的 wall-clock = **199.86s** (冷启动)，单网表 GPU 实际工作时长仍约 30ms (单网表)
 - **根因**: ngspice `.tran` (瞬态分析) 是 **CPU 解析主导**, GPU 仅在"矩阵分解 + 三角求解" 阶段被密集调用
 - **量化**: 单网表中, **CPU 解析 + 矩阵组装占 ~70% 时间**, **GPU 数值计算占 ~20%**, **I/O + 同步占 ~10%**
 
